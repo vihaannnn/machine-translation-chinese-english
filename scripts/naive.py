@@ -1,4 +1,9 @@
 #!/usr/bin/env python
+"""
+This script builds a transformer-based sequence-to-sequence model for machine translation between Chinese and English using TensorFlow and Hugging Face's tokenizers.
+It includes data preparation, custom transformer architecture, training, and saving the model.
+"""
+
 import os
 import subprocess
 import json
@@ -11,36 +16,61 @@ import matplotlib.pyplot as plt
 from transformers import BertTokenizer
 
 def setup_kaggle_and_download():
+    """Sets up Kaggle API credentials and downloads the translation dataset."""
     os.system("pip install -q kaggle")
     os.system("mkdir -p ~/.kaggle")
-    os.system("""bash -c 'echo "{\"username\":\"\",\"key\":\\"}" > ~/.kaggle/kaggle.json'""")
+    os.system("""bash -c 'echo "{\"username\":\"\",\"key\":\"\"}" > ~/.kaggle/kaggle.json'""")
     os.system("chmod 600 ~/.kaggle/kaggle.json")
     os.system("kaggle datasets download -d qianhuan/translation")
     os.system("unzip -o translation.zip")
 
 def jsontodf(json_filepath):
+    """Converts a JSON file to a pandas DataFrame.
+
+    Args:
+        json_filepath (str): Path to the JSON file.
+
+    Returns:
+        pd.DataFrame: DataFrame containing parsed JSON objects.
+    """
     json_list = []
     with open(json_filepath, 'r') as file:
         for line in file:
             json_list.append(line.strip())
     json_objects = [json.loads(json_str) for json_str in json_list if json_str]
-    df = pd.DataFrame(json_objects)
-    return df
+    return pd.DataFrame(json_objects)
 
 def contains_english_or_number(text):
+    """Checks if the given text contains English letters or numbers.
+
+    Args:
+        text (str): Input text.
+
+    Returns:
+        bool: True if text contains English or digits, False otherwise.
+    """
     pattern = r"^(?=.*[a-zA-Z])|(?=.*\d).+$"
     return bool(re.match(pattern, text))
 
 def add_padding(token_list, max_length):
+    """Pads or truncates a list of tokens to a fixed length.
+
+    Args:
+        token_list (List[int]): List of token IDs.
+        max_length (int): Desired length.
+
+    Returns:
+        List[int]: Padded or truncated token list.
+    """
     if len(token_list) < max_length:
         padding_length = max_length - len(token_list)
-        token_list = token_list + [0] * padding_length
+        token_list += [0] * padding_length
     else:
         token_list = token_list[:max_length]
     return token_list
 
-
 class PositionalEmbedding(tf.keras.layers.Layer):
+    """Embedding layer that includes learned word embeddings and fixed positional encodings."""
     def __init__(self, vocab_size, d_model, max_length):
         super().__init__()
         self.embed_layer = tf.keras.layers.Embedding(vocab_size, d_model, mask_zero=True)
@@ -63,6 +93,7 @@ class PositionalEmbedding(tf.keras.layers.Layer):
         return x + self.pos_encoding[tf.newaxis, :seq_len, :]
 
 class AttentionBaseLayer(tf.keras.layers.Layer):
+    """Base layer for attention with normalization and skip connection."""
     def __init__(self, num_heads, key_dim, dropout_rate=0.1):
         super().__init__()
         self.mha = tf.keras.layers.MultiHeadAttention(num_heads=num_heads, key_dim=key_dim, dropout=dropout_rate)
@@ -70,6 +101,7 @@ class AttentionBaseLayer(tf.keras.layers.Layer):
         self.skip = tf.keras.layers.Add()
 
 class CrossAttentionLayer(AttentionBaseLayer):
+    """Applies multi-head cross-attention between query and context."""
     def call(self, query, context):
         attn_output, attn_scores = self.mha(query=query, key=context, value=context, return_attention_scores=True)
         self.last_scores = attn_scores
@@ -77,16 +109,19 @@ class CrossAttentionLayer(AttentionBaseLayer):
         return self.norm(x)
 
 class GlobalSelfAttentionLayer(AttentionBaseLayer):
+    """Applies global self-attention on the input."""
     def call(self, x):
         attn_output = self.mha(query=x, key=x, value=x)
         return self.norm(self.skip([x, attn_output]))
 
 class CausalSelfAttentionLayer(AttentionBaseLayer):
+    """Applies causal self-attention (for decoder input)."""
     def call(self, x):
         attn_output = self.mha(query=x, key=x, value=x, use_causal_mask=True)
         return self.norm(self.skip([x, attn_output]))
 
 class FeedForwardNetwork(tf.keras.layers.Layer):
+    """Feedforward neural network with residual connection and normalization."""
     def __init__(self, d_model, dff, dropout_rate=0.1):
         super().__init__()
         self.ffn_seq = tf.keras.Sequential([
@@ -101,6 +136,7 @@ class FeedForwardNetwork(tf.keras.layers.Layer):
         return self.norm(self.skip([x, self.ffn_seq(x)]))
 
 class TransformerEncoderLayer(tf.keras.layers.Layer):
+    """Single transformer encoder layer with self-attention and FFN."""
     def __init__(self, d_model, num_heads, dff, dropout_rate=0.1):
         super().__init__()
         self.self_attn = GlobalSelfAttentionLayer(num_heads=num_heads, key_dim=d_model, dropout_rate=dropout_rate)
@@ -111,11 +147,11 @@ class TransformerEncoderLayer(tf.keras.layers.Layer):
         return self.ffn(x)
 
 class TransformerEncoder(tf.keras.layers.Layer):
+    """Full transformer encoder stack."""
     def __init__(self, num_layers, d_model, num_heads, dff, vocab_size, dropout_rate=0.1):
         super().__init__()
         max_length = 128
-        self.pos_embed = PositionalEmbedding(vocab_size=vocab_size, d_model=d_model, max_length=max_length)
-        #self.pos_embed = PositionalEmbedding(vocab_size=vocab_size, d_model=d_model)
+        self.pos_embed = PositionalEmbedding(vocab_size, d_model, max_length)
         self.enc_layers = [TransformerEncoderLayer(d_model, num_heads, dff, dropout_rate) for _ in range(num_layers)]
         self.dropout = tf.keras.layers.Dropout(dropout_rate)
 
@@ -127,10 +163,11 @@ class TransformerEncoder(tf.keras.layers.Layer):
         return x
 
 class TransformerDecoderLayer(tf.keras.layers.Layer):
+    """Single transformer decoder layer with causal and cross-attention."""
     def __init__(self, d_model, num_heads, dff, dropout_rate=0.1):
         super().__init__()
-        self.causal_attn = CausalSelfAttentionLayer(num_heads=num_heads, key_dim=d_model, dropout_rate=dropout_rate)
-        self.cross_attn = CrossAttentionLayer(num_heads=num_heads, key_dim=d_model, dropout_rate=dropout_rate)
+        self.causal_attn = CausalSelfAttentionLayer(num_heads, d_model, dropout_rate)
+        self.cross_attn = CrossAttentionLayer(num_heads, d_model, dropout_rate)
         self.ffn = FeedForwardNetwork(d_model, dff, dropout_rate)
 
     def call(self, x, encoder_out):
@@ -140,10 +177,11 @@ class TransformerDecoderLayer(tf.keras.layers.Layer):
         return self.ffn(x)
 
 class TransformerDecoder(tf.keras.layers.Layer):
+    """Full transformer decoder stack."""
     def __init__(self, num_layers, d_model, num_heads, dff, vocab_size, dropout_rate=0.1):
         super().__init__()
         max_length = 128
-        self.pos_embed = PositionalEmbedding(vocab_size=vocab_size, d_model=d_model, max_length=max_length)
+        self.pos_embed = PositionalEmbedding(vocab_size, d_model, max_length)
         self.dec_layers = [TransformerDecoderLayer(d_model, num_heads, dff, dropout_rate) for _ in range(num_layers)]
         self.dropout = tf.keras.layers.Dropout(dropout_rate)
         self.last_scores = None
@@ -158,17 +196,12 @@ class TransformerDecoder(tf.keras.layers.Layer):
 
 @tf.keras.utils.register_keras_serializable()
 class Transformer(tf.keras.Model):
+    """Complete transformer model combining encoder and decoder."""
     def __init__(self, *, num_layers, d_model, num_heads, dff,
                  input_vocab_size, target_vocab_size, dropout_rate=0.1):
         super().__init__()
-        self.encoder = TransformerEncoder(num_layers=num_layers, d_model=d_model,
-                                          num_heads=num_heads, dff=dff,
-                                          vocab_size=input_vocab_size,
-                                          dropout_rate=dropout_rate)
-        self.decoder = TransformerDecoder(num_layers=num_layers, d_model=d_model,
-                                          num_heads=num_heads, dff=dff,
-                                          vocab_size=target_vocab_size,
-                                          dropout_rate=dropout_rate)
+        self.encoder = TransformerEncoder(num_layers, d_model, num_heads, dff, input_vocab_size, dropout_rate)
+        self.decoder = TransformerDecoder(num_layers, d_model, num_heads, dff, target_vocab_size, dropout_rate)
         self.final_layer = tf.keras.layers.Dense(target_vocab_size)
 
     def call(self, inputs, training=False):
@@ -184,6 +217,7 @@ class Transformer(tf.keras.Model):
 
 @tf.keras.utils.register_keras_serializable()
 class CustomSchedule(tf.keras.optimizers.schedules.LearningRateSchedule):
+    """Implements the learning rate schedule used in the original Transformer paper."""
     def __init__(self, d_model, warmup_steps=4000):
         super().__init__()
         self.d_model = tf.cast(d_model, tf.float32)
@@ -201,6 +235,7 @@ class CustomSchedule(tf.keras.optimizers.schedules.LearningRateSchedule):
 
 @tf.keras.utils.register_keras_serializable()
 class CustomAdam(tf.keras.optimizers.Adam):
+    """Custom Adam optimizer that includes additional parameters for serialization."""
     def __init__(self, custom_param, **kwargs):
         super().__init__(**kwargs)
         self.custom_param = custom_param
