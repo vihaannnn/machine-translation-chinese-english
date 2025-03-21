@@ -1,8 +1,10 @@
-# machine-translation chinese-english
+# Chinese English Machine Translation
 
 ## A Guardrails based approach to Chinese to English translation
 
 Using guardrails of translations from less accurate but non-hallucinogenic models, we use GPT4 to generate new translations with increased context from these translation models to decrease likelihood of hallucinations.
+
+Live Website can be found [here](https://machine-translation-chinese-english.streamlit.app/).
 
 ## Dataset
 The data used to train this model can be found [here](https://www.kaggle.com/datasets/qianhuan/translation/code). A more detailed discussion of its limitations and potential pitfalls can be found in the [Ethics statement](Ethics_statement.md).
