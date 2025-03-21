@@ -85,11 +85,7 @@ def get_openai_refinement(chinese_text, ML_candidate_translation, Naive_candidat
 
 
 # Sample dictionary of Chinese sentences and their candidate translations
-"""
-Dictionary containing Chinese sentences as keys and their corresponding
-machine learning model translations as values. Used for demonstration and testing
-purposes in the Streamlit application.
-"""
+
 ML_translations_dict = {
     "我喜欢学习新语言。": "I words to be fond of new",
     "今天天气很好。": "now day day very to be fond of",
@@ -102,11 +98,7 @@ ML_translations_dict = {
     "最近的地铁站在哪里？": "most near bull's-eye earth station to exist which?",
     "我们出去吃晚饭吧。": "I go go eat evening to out to to"
 }
-"""
-Dictionary containing Chinese sentences as keys and their corresponding
-naive model translations as values. Used for demonstration and testing purposes
-in the Streamlit application.
-"""
+
 Naive_translations_dict = {
     "我喜欢学习新语言。": "I think that the new learning and learning, and learning, and I have a new spirit of the new spirit of the spirit of the spirit of learning.",
     "今天天气很好。": "The weather, the weather, the weather, the weather, the weather, the good weather, good weather, good weather, good weather, good weather, good, good, good, good, good, good, good, good, good weather, good, good, good, good, good, good weather, good weather, good weather, good weather, good, good, good, good, good, good, good, good, good, good, good, good, good, good, good, good, good, good, good, good, good, good, good, good, good weather, good weather, good weather, good, good, good, good, good, good, good, good, good, good, good, good, good, good, good, good, good, good, good, good, good, good, good, good, good, good, good, good, good, good, good, good, good, good, good, good, good weather, good weather, good weather, good weather, good weather, good weather, good weather, good weather, good weather, good, good, good, good, good, good weather, good weather, good weather, good weather, good weather, good, good",
@@ -120,9 +112,10 @@ Naive_translations_dict = {
     "我们出去吃晚饭吧。": "We'll eat, you'll eat, you eat, you eat, you eat, you'll eat, you eat the eat, you eat, you eat, you eat the eat, you eat, you'll eat, and you '.'and you'and you'and you'and you'and you'and you'and you'and you'and you eat, you'and you'll eat, you'll eat the night, you'and you eat, you'and you'll eat the eat the eat the eat, you'and you'll eat the eat the eat, you eat, you'll eat, you'and you'and you'and you'and you eat the eat, you'll eat, you'and you'and you'and you'll eat, you'and you'll eat, you'and you'and you'll eat, you'll eat, you'and you'll eat, you'll eat, you'll eat, you'and you'll eat, you'll eat, you'll eat, you'll eat, you'll eat, you'll eat, you'and you'll eat, you"
 }
 
+# Streamlit app
+st.title("Chinese Translation Refinement App")
+
 """
-Chinese Translation Refinement App
-----------------------------------
 A Streamlit application that compares and refines translations from two different models
 (machine learning and naive) using the OpenAI API. The app allows users to:
 
@@ -134,16 +127,7 @@ A Streamlit application that compares and refines translations from two differen
 The app uses OpenAI's JSON response format to structure the feedback and displays
 the results in an organized manner with metrics and expandable sections.
 
-Requirements:
-- OpenAI API key stored in a .env file or as an environment variable
-- Streamlit, OpenAI, and python-dotenv packages
-
-Usage:
-Run the app with `streamlit run app.py` (replace app.py with the actual filename)
 """
-
-# Streamlit app
-st.title("Chinese Translation Refinement App")
 
 # Sidebar for selecting Chinese text
 st.sidebar.header("Select Chinese Sentence")
@@ -160,9 +144,9 @@ st.text(selected_chinese)
 st.header("Candidate Translation")
 ML_candidate_translation = ML_translations_dict[selected_chinese]
 Naive_candidate_translation = Naive_translations_dict[selected_chinese]
-st.text("Naive Transaltion")
+st.subheader("Naive Transaltion")
 st.text(Naive_candidate_translation)
-st.text("Machine Learning Translation")
+st.subheader("Machine Learning Translation")
 st.text(ML_candidate_translation)
 
 # Add system message instructions to OpenAI
