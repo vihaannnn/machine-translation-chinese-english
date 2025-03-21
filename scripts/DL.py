@@ -107,24 +107,11 @@ st.text(ML_candidate_translation)
 # Add system message instructions to OpenAI
 st.sidebar.markdown("---")
 st.sidebar.subheader("OpenAI Response Format")
-with st.sidebar.expander("Prompt to Model"):
+with st.sidebar.expander("JSON Structure"):
     st.code('''{
-    {"role": "system", "content": "You are a helpful translation assistant. Return your response as JSON."},
-    {"role": "user", "content": f"""
-    I have used 2 models to translate a chinese sentence to english. Use their translations as guardrails, to keep you on track while translating.
-    translate - chinese_text
-    Use this as a candidate translation from the machine learning model - ML_candidate_translation
-    Use this as a candidate translation from the naive model - Naive_candidate_translation
-    If you feel the candidate translation is wrong then correct it, and also print out the new translation phrase. 
-    Explain why the candidate tåranslation was wrong by giving it a score from 0-10. 
-    Do not use emojis.
-                
-    Respond with a JSON object using this exact structure:
-  "refined_translation": "your corrected translation or the original if correct",
-  "ML_score": "number between 0-10 judging the machine learning translation",
-  "ML_comments": "your explanation of why the machine learning translation was wrong or right"
-  "Naive_score": "number between 0-10 judging the naive translation"
-  "Naive_comments": "your explanation of why the naive translation was wrong or right"
+  "refined_translation": "corrected or original translation",
+  "score": 0-10,
+  "comments": "explanation of the translation quality"
 }''', language="json")
 
 # Button to get OpenAI refinement
