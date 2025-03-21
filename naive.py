@@ -13,7 +13,7 @@ from transformers import BertTokenizer
 def setup_kaggle_and_download():
     os.system("pip install -q kaggle")
     os.system("mkdir -p ~/.kaggle")
-    os.system("""bash -c 'echo "{\"username\":\"luoliwangtw\",\"key\":\"80cc1089e66ff33f3ab9136a56254eec\"}" > ~/.kaggle/kaggle.json'""")
+    os.system("""bash -c 'echo "{\"username\":\"\",\"key\":\\"}" > ~/.kaggle/kaggle.json'""")
     os.system("chmod 600 ~/.kaggle/kaggle.json")
     os.system("kaggle datasets download -d qianhuan/translation")
     os.system("unzip -o translation.zip")
