@@ -11,7 +11,36 @@ load_dotenv()
 openai.api_key = os.getenv("OPENAI_API_KEY")
 
 def get_openai_refinement(chinese_text, ML_candidate_translation, Naive_candidate_translation):
-    """Get translation refinement from OpenAI API using JSON response format"""
+    """
+    Get translation refinement from OpenAI API using GPT-4.
+    
+    This function sends the original Chinese text along with two candidate translations
+    to the OpenAI API and receives a refined translation with scoring and feedback.
+    
+    Parameters:
+    -----------
+    chinese_text : str
+        The original Chinese text to be translated
+    ML_candidate_translation : str
+        The translation provided by a machine learning model
+    Naive_candidate_translation : str
+        The translation provided by a naive model
+    
+    Returns:
+    --------
+    dict
+        A dictionary containing the refined translation, scores and comments for both
+        ML and Naive translations. The dictionary has the following structure:
+        {
+            "refined_translation": str,
+            "ML_score": int,
+            "ML_comments": str,
+            "Naive_score": int,
+            "Naive_comments": str
+        }
+        
+        If an error occurs, returns a dictionary with error information.
+    """
     try:
         response = openai.chat.completions.create(
             model="gpt-4-turbo",  # You can change this to the model you want to use
@@ -54,7 +83,13 @@ def get_openai_refinement(chinese_text, ML_candidate_translation, Naive_candidat
             "comments": f"Error with OpenAI API: {str(e)}"
         }
 
+
 # Sample dictionary of Chinese sentences and their candidate translations
+"""
+Dictionary containing Chinese sentences as keys and their corresponding
+machine learning model translations as values. Used for demonstration and testing
+purposes in the Streamlit application.
+"""
 ML_translations_dict = {
     "我喜欢学习新语言。": "I words to be fond of new",
     "今天天气很好。": "now day day very to be fond of",
@@ -67,7 +102,11 @@ ML_translations_dict = {
     "最近的地铁站在哪里？": "most near bull's-eye earth station to exist which?",
     "我们出去吃晚饭吧。": "I go go eat evening to out to to"
 }
-
+"""
+Dictionary containing Chinese sentences as keys and their corresponding
+naive model translations as values. Used for demonstration and testing purposes
+in the Streamlit application.
+"""
 Naive_translations_dict = {
     "我喜欢学习新语言。": "I think that the new learning and learning, and learning, and I have a new spirit of the new spirit of the spirit of the spirit of learning.",
     "今天天气很好。": "The weather, the weather, the weather, the weather, the weather, the good weather, good weather, good weather, good weather, good weather, good, good, good, good, good, good, good, good, good weather, good, good, good, good, good, good weather, good weather, good weather, good weather, good, good, good, good, good, good, good, good, good, good, good, good, good, good, good, good, good, good, good, good, good, good, good, good, good weather, good weather, good weather, good, good, good, good, good, good, good, good, good, good, good, good, good, good, good, good, good, good, good, good, good, good, good, good, good, good, good, good, good, good, good, good, good, good, good, good, good weather, good weather, good weather, good weather, good weather, good weather, good weather, good weather, good weather, good, good, good, good, good, good weather, good weather, good weather, good weather, good weather, good, good",
@@ -80,6 +119,28 @@ Naive_translations_dict = {
     "最近的地铁站在哪里？": "Is the iron iron iron iron iron iron iron iron iron iron - copper iron ore, the iron the iron iron iron iron iron iron iron ore?",
     "我们出去吃晚饭吧。": "We'll eat, you'll eat, you eat, you eat, you eat, you'll eat, you eat the eat, you eat, you eat, you eat the eat, you eat, you'll eat, and you '.'and you'and you'and you'and you'and you'and you'and you'and you'and you eat, you'and you'll eat, you'll eat the night, you'and you eat, you'and you'll eat the eat the eat the eat, you'and you'll eat the eat the eat, you eat, you'll eat, you'and you'and you'and you'and you eat the eat, you'll eat, you'and you'and you'and you'll eat, you'and you'll eat, you'and you'and you'll eat, you'll eat, you'and you'll eat, you'll eat, you'll eat, you'and you'll eat, you'll eat, you'll eat, you'll eat, you'll eat, you'll eat, you'and you'll eat, you"
 }
+
+"""
+Chinese Translation Refinement App
+----------------------------------
+A Streamlit application that compares and refines translations from two different models
+(machine learning and naive) using the OpenAI API. The app allows users to:
+
+1. Select a Chinese sentence from a predefined list
+2. View the candidate translations from both models
+3. Request a refined translation from OpenAI's GPT-4
+4. View the refined translation along with scores and feedback for both models
+
+The app uses OpenAI's JSON response format to structure the feedback and displays
+the results in an organized manner with metrics and expandable sections.
+
+Requirements:
+- OpenAI API key stored in a .env file or as an environment variable
+- Streamlit, OpenAI, and python-dotenv packages
+
+Usage:
+Run the app with `streamlit run app.py` (replace app.py with the actual filename)
+"""
 
 # Streamlit app
 st.title("Chinese Translation Refinement App")
@@ -107,11 +168,24 @@ st.text(ML_candidate_translation)
 # Add system message instructions to OpenAI
 st.sidebar.markdown("---")
 st.sidebar.subheader("OpenAI Response Format")
-with st.sidebar.expander("JSON Structure"):
+with st.sidebar.expander("Prompt to Model"):
     st.code('''{
-  "refined_translation": "corrected or original translation",
-  "score": 0-10,
-  "comments": "explanation of the translation quality"
+    {"role": "system", "content": "You are a helpful translation assistant. Return your response as JSON."},
+    {"role": "user", "content": f"""
+    I have used 2 models to translate a chinese sentence to english. Use their translations as guardrails, to keep you on track while translating.
+    translate - chinese_text
+    Use this as a candidate translation from the machine learning model - ML_candidate_translation
+    Use this as a candidate translation from the naive model - Naive_candidate_translation
+    If you feel the candidate translation is wrong then correct it, and also print out the new translation phrase. 
+    Explain why the candidate tåranslation was wrong by giving it a score from 0-10. 
+    Do not use emojis.
+                
+    Respond with a JSON object using this exact structure:
+  "refined_translation": "your corrected translation or the original if correct",
+  "ML_score": "number between 0-10 judging the machine learning translation",
+  "ML_comments": "your explanation of why the machine learning translation was wrong or right"
+  "Naive_score": "number between 0-10 judging the naive translation"
+  "Naive_comments": "your explanation of why the naive translation was wrong or right"
 }''', language="json")
 
 # Button to get OpenAI refinement
