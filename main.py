@@ -10,7 +10,7 @@ load_dotenv()
 # Set up OpenAI API key
 openai.api_key = os.getenv("OPENAI_API_KEY")
 
-def get_openai_refinement(chinese_text, candidate_translation):
+def get_openai_refinement(chinese_text, ML_candidate_translation, Naive_candidate_translation):
     """Get translation refinement from OpenAI API using JSON response format"""
     try:
         response = openai.chat.completions.create(
@@ -18,8 +18,10 @@ def get_openai_refinement(chinese_text, candidate_translation):
             messages=[
                 {"role": "system", "content": "You are a helpful translation assistant. Return your response as JSON."},
                 {"role": "user", "content": f"""
+                I have used 2 models to translate a chinese sentence to english. Use their translations as guardrails, to keep you on track while translating.
                 translate - {chinese_text} 
-                Use this as a candidate translation - {candidate_translation} 
+                Use this as a candidate translation from the machine learning model - {ML_candidate_translation} 
+                Use this as a candidate translation from the naive model - {Naive_candidate_translation}
                 If you feel the candidate translation is wrong then correct it, and also print out the new translation phrase. 
                 Explain why the candidate translation was wrong by giving it a score from 0-10. 
                 Do not use emojis.
@@ -27,8 +29,10 @@ def get_openai_refinement(chinese_text, candidate_translation):
                 Respond with a JSON object using this exact structure:
                 {{
                     "refined_translation": "your corrected translation or the original if correct",
-                    "score": number between 0-10,
-                    "comments": "your explanation of why the translation was wrong or right"
+                    "ML_score": "number between 0-10 judging the machine learning translation",
+                    "ML_comments": "your explanation of why the machine learning translation was wrong or right"
+                    "Naive_score": "number between 0-10 judging the naive translation"
+                    "Naive_comments": "your explanation of why the naive translation was wrong or right"
                 }}
                 """}
             ],
@@ -45,23 +49,36 @@ def get_openai_refinement(chinese_text, candidate_translation):
         
     except Exception as e:
         return {
-            "refined_translation": candidate_translation,
+            "refined_translation": ML_candidate_translation,
             "score": "N/A",
             "comments": f"Error with OpenAI API: {str(e)}"
         }
 
 # Sample dictionary of Chinese sentences and their candidate translations
-translations_dict = {
-    "我喜欢学习新语言。": "I like study new language.",
-    "今天天气很好。": "⁠Today weather very good.",
-    "她正在看书。": "She is read book.",
-    "这杯咖啡味道很好。": "This cup coffee taste very good.",
-    "他每天早上跑步。": "He every morning run.",
-    "请关灯。": "Please close light.",
-    "我稍后给你打电话。": "⁠I later give you call.",
-    "时间过得真快。": "⁠Time pass really fast.",
-    "最近的地铁站在哪里？": "Nearest subway station where?",
-    "我们出去吃晚饭吧。": "We go out eat dinner."
+ML_translations_dict = {
+    "我喜欢学习新语言。": "I words to be fond of new",
+    "今天天气很好。": "now day day very to be fond of",
+    "她正在看书。": "she exist see straight to to",
+    "这杯咖啡味道很好。": "coffee used taste loanwords value road cup very to be fond of",
+    "他每天早上跑步。": "he each day early up to run a step",
+    "请关灯。": "'",
+    "我稍后给你打电话。": "i empress you to beat",
+    "时间过得真快。": "have to to really rapid",
+    "最近的地铁站在哪里？": "most near bull's-eye earth station to exist which?",
+    "我们出去吃晚饭吧。": "I go go eat evening to out to to"
+}
+
+Naive_translations_dict = {
+    "我喜欢学习新语言。": "I think that the new learning and learning, and learning, and I have a new spirit of the new spirit of the spirit of the spirit of learning.",
+    "今天天气很好。": "The weather, the weather, the weather, the weather, the weather, the good weather, good weather, good weather, good weather, good weather, good, good, good, good, good, good, good, good, good weather, good, good, good, good, good, good weather, good weather, good weather, good weather, good, good, good, good, good, good, good, good, good, good, good, good, good, good, good, good, good, good, good, good, good, good, good, good, good weather, good weather, good weather, good, good, good, good, good, good, good, good, good, good, good, good, good, good, good, good, good, good, good, good, good, good, good, good, good, good, good, good, good, good, good, good, good, good, good, good, good weather, good weather, good weather, good weather, good weather, good weather, good weather, good weather, good weather, good, good, good, good, good, good weather, good weather, good weather, good weather, good weather, good, good",
+    "她正在看书。": "She saw her, she saw her, she saw her, she saw her.",
+    "这杯咖啡味道很好。": "It's a good taste, and you'll just a good taste, and you are good, and you are good, and you are good, you are good, you are good, good.",
+    "他每天早上跑步。": "When he saw the day, he saw the day, he saw the day, and the day he went to the day, and the day, he went to the day, and the day, and the day.",
+    "请关灯。": "Please Please Please, the shoes, and the shoes, and the shoes, please, please, and the shoes, please, and the shoes, please.",
+    "我稍后给你打电话。": " I'll just you with you, you can't even you like you like to buy a TV, you can't even more like you like to TV, you can't even you like to you like.",
+    "时间过得真快。": "The old one.",
+    "最近的地铁站在哪里？": "Is the iron iron iron iron iron iron iron iron iron iron - copper iron ore, the iron the iron iron iron iron iron iron iron ore?",
+    "我们出去吃晚饭吧。": "We'll eat, you'll eat, you eat, you eat, you eat, you'll eat, you eat the eat, you eat, you eat, you eat the eat, you eat, you'll eat, and you '.'and you'and you'and you'and you'and you'and you'and you'and you'and you eat, you'and you'll eat, you'll eat the night, you'and you eat, you'and you'll eat the eat the eat the eat, you'and you'll eat the eat the eat, you eat, you'll eat, you'and you'and you'and you'and you eat the eat, you'll eat, you'and you'and you'and you'll eat, you'and you'll eat, you'and you'and you'll eat, you'll eat, you'and you'll eat, you'll eat, you'll eat, you'and you'll eat, you'll eat, you'll eat, you'll eat, you'll eat, you'll eat, you'and you'll eat, you"
 }
 
 # Streamlit app
@@ -71,7 +88,7 @@ st.title("Chinese Translation Refinement App")
 st.sidebar.header("Select Chinese Sentence")
 selected_chinese = st.sidebar.selectbox(
     "Choose a sentence:",
-    options=list(translations_dict.keys())
+    options=list(ML_translations_dict.keys())
 )
 
 # Display selected Chinese text
@@ -80,8 +97,12 @@ st.text(selected_chinese)
 
 # Display candidate translation
 st.header("Candidate Translation")
-candidate_translation = translations_dict[selected_chinese]
-st.text(candidate_translation)
+ML_candidate_translation = ML_translations_dict[selected_chinese]
+Naive_candidate_translation = Naive_translations_dict[selected_chinese]
+st.text("Naive Transaltion")
+st.text(Naive_candidate_translation)
+st.text("Machine Learning Translation")
+st.text(ML_candidate_translation)
 
 # Add system message instructions to OpenAI
 st.sidebar.markdown("---")
@@ -96,23 +117,31 @@ with st.sidebar.expander("JSON Structure"):
 # Button to get OpenAI refinement
 if st.button("Get Translation Refinement"):
     with st.spinner("Getting refinement from OpenAI..."):
-        refinement_json = get_openai_refinement(selected_chinese, candidate_translation)
+        refinement_json = get_openai_refinement(selected_chinese, ML_candidate_translation, Naive_candidate_translation)
         
     st.header("OpenAI Refinement")
+
+    st.subheader("Refined Translation")
+    st.info(refinement_json.get("refined_translation", "No translation provided"))
     
     # Display the results in a structured way
     col1, col2 = st.columns(2)
     
-    with col1:
-        st.subheader("Refined Translation")
-        st.info(refinement_json.get("refined_translation", "No translation provided"))
-        
-        st.subheader("Score")
-        st.metric("Translation Score", refinement_json.get("score", "N/A"))
     
-    with col2:
-        st.subheader("Comments")
-        st.text_area("Feedback", refinement_json.get("comments", "No comments provided"), height=200)
+    st.subheader("Naive Model Score")
+    st.metric("Naive Model Translation Score", refinement_json.get("Naive_score", "N/A"))
+    
+    
+    st.subheader("Naive Model Comments")
+    st.text_area("Naive Model Feedback", refinement_json.get("Naive_comments", "No comments provided"), height=200)
+
+    
+    st.subheader("Machine Learning Model Score")
+    st.metric("Machine Learning Model Translation Score", refinement_json.get("ML_score", "N/A"))
+    
+    
+    st.subheader("Machine Learning Model Comments")
+    st.text_area("Machine Learning Model Feedback", refinement_json.get("ML_comments", "No comments provided"), height=200)
     
     # Display the raw JSON
     with st.expander("Show Raw JSON"):
