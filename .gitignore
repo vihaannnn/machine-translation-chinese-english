@@ -1,1 +1,5 @@
 venv/
+.DS_Store
+*.pyc
+__pycache__/
+translation2019zh_train.json
